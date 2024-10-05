@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WLED Device Discovery</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.js"></script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold mb-6">WLED Device Discovery</h1>
+        
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold">Discovered Devices</h2>
+                <button onclick="refreshDevices()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                    Refresh
+                </button>
+            </div>
+            
+            <div id="deviceList" class="space-y-4">
+                <p class="text-gray-500">Searching for devices...</p>
+            </div>
+        </div>
+
+        <!-- Modal for displaying sync settings -->
+        <div id="syncModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden">
+            <div class="relative top-20 mx-auto p-5 border w-3/4 shadow-lg rounded-md bg-white max-h-[80vh] overflow-y-auto">
+                <div class="mt-3">
+                    <h3 class="text-lg font-medium leading-6 text-gray-900 mb-2">Sync Settings</h3>
+                    <p id="savedLocation" class="text-sm text-gray-600 mb-4"></p>
+                    <pre id="syncSettings" class="bg-gray-100 p-4 rounded overflow-x-auto"></pre>
+                    <div class="mt-4">
+                        <button onclick="closeSyncModal()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function refreshDevices() {
+            try {
+                const response = await fetch('/api/devices');
+                const devices = await response.json();
+                
+                const deviceList = document.getElementById('deviceList');
+                if (devices.length === 0) {
+                    deviceList.innerHTML = '<p class="text-gray-500">No devices found</p>';
+                    return;
+                }
+
+                deviceList.innerHTML = devices.map(device => `
+                    <div class="border rounded p-4 hover:bg-gray-50">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h3 class="font-semibold">${device.name}</h3>
+                                <p class="text-gray-600">IP: ${device.ip}</p>
+                                <p class="text-gray-600">Version: ${device.version}</p>
+                            </div>
+                            <div class="space-x-2 flex items-center">
+                                <select id="preset-${device.ip}" class="rounded border p-2">
+                                    <option value="">Select preset...</option>
+                                </select>
+                                <button onclick="applyPreset('${device.ip}')" 
+                                        class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">
+                                    Apply Preset
+                                </button>
+                                <button onclick="fetchSyncSettings('${device.ip}')" 
+                                        class="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600">
+                                    Save Sync Settings
+                                </button>
+                                <a href="http://${device.ip}" target="_blank" 
+                                   class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                                    Open
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+
+                // After setting the innerHTML, populate the preset dropdowns
+                loadPresets();
+            } catch (error) {
+                console.error('Error fetching devices:', error);
+            }
+        }
+
+        async function fetchSyncSettings(ip) {
+            try {
+                const response = await fetch(`/api/sync-settings/${ip}`);
+                const data = await response.json();
+                
+                // Display the sync settings in the modal
+                document.getElementById('syncSettings').textContent = JSON.stringify(data.settings, null, 2);
+                document.getElementById('savedLocation').textContent = `Settings saved to: ${data.savedTo}`;
+                document.getElementById('syncModal').classList.remove('hidden');
+            } catch (error) {
+                console.error('Error fetching sync settings:', error);
+                alert('Failed to fetch sync settings');
+            }
+        }
+
+        async function loadPresets() {
+            try {
+                const response = await fetch('/api/presets');
+                const presets = await response.json();
+                
+                // Update all preset dropdowns
+                const dropdowns = document.querySelectorAll('select[id^="preset-"]');
+                dropdowns.forEach(dropdown => {
+                    // Keep the first option (Select preset...)
+                    dropdown.innerHTML = '<option value="">Select preset...</option>';
+                    
+                    // Add preset options
+                    presets.forEach(preset => {
+                        const option = document.createElement('option');
+                        option.value = preset;
+                        option.textContent = preset.replace('.json', '');
+                        dropdown.appendChild(option);
+                    });
+                });
+            } catch (error) {
+                console.error('Error loading presets:', error);
+            }
+        }
+
+        async function applyPreset(ip) {
+            try {
+                const dropdown = document.getElementById(`preset-${ip}`);
+                const selectedPreset = dropdown.value;
+                
+                if (!selectedPreset) {
+                    alert('Please select a preset first');
+                    return;
+                }
+
+                const response = await fetch(`/api/apply-preset/${ip}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ preset: selectedPreset })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert('Preset applied successfully!');
+                } else {
+                    throw new Error(result.message);
+                }
+            } catch (error) {
+                console.error('Error applying preset:', error);
+                alert('Failed to apply preset: ' + error.message);
+            }
+        }
+
+        function closeSyncModal() {
+            document.getElementById('syncModal').classList.add('hidden');
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('syncModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeSyncModal();
+            }
+        });
+
+        // Initial load
+        refreshDevices();
+        
+        // Refresh every 10 seconds
+        setInterval(refreshDevices, 10000);
+    </script>
+</body>
+</html>

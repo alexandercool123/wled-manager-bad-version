@@ -1,0 +1,56 @@
+{
+  "udp": {
+    "primaryPort": "21324",
+    "secondaryPort": "65506",
+    "sendGroup": "1",
+    "receiveGroup": "1"
+  },
+  "sync": {
+    "receiveBrightness": true,
+    "receiveColor": true,
+    "receiveEffects": true,
+    "receiveSegmentOptions": true,
+    "notifyDirect": true,
+    "notifyButton": true,
+    "notifyAlexa": true,
+    "notifyHue": true,
+    "notifyMacro": true,
+    "udpRetransmit": "0"
+  },
+  "instance": {
+    "enableList": true,
+    "discoverable": true
+  },
+  "realtime": {
+    "receiveUDP": true,
+    "useMainSegment": true,
+    "dmxAddress": "1",
+    "dmxMode": "4",
+    "dmxTimeout": "2500",
+    "e131Port": "5568",
+    "e131Multicast": true,
+    "e131SkipOutOfSequence": true,
+    "e131Universe": "1",
+    "forceBrightness": true,
+    "disableGammaCorrection": true,
+    "ledOffset": "0"
+  },
+  "mqtt": {
+    "enabled": true,
+    "broker": "",
+    "port": "1883",
+    "username": "",
+    "clientId": "WLED-e36864",
+    "deviceTopic": "wled/e36864",
+    "groupTopic": "wled/all",
+    "buttonPublish": true
+  },
+  "hue": {
+    "pollEnabled": true,
+    "onOff": true,
+    "brightness": true,
+    "color": true,
+    "pollInterval": "2500",
+    "ip": "192.168.7.0"
+  }
+}
